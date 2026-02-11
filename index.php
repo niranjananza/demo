@@ -36,7 +36,7 @@
         <h1>Hello, World 👋</h1>
         <p>PHP Server is running successfully</p>
         <p><?php echo "Current time: " . date('Y-m-d H:i:s', strtotime('+ 4 hours 30 minutes')); ?></p>
-        <p>click <a href="./home.php">here</a> to visit home</p>
+        <p>click <a href="./index.html">here</a> to visit home</p>
     </div>
 </body>
 </html>
