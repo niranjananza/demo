@@ -1,42 +1,21 @@
-# MIS Project
-# CodeIgniter 3 to CodeIgniter 4 Migration Checklist
+# Botlogs CodeIgniter 3 to CodeIgniter 4 Migration Checklist
 
 ## Document Control
 
 | Item | Details |
 | --- | --- |
-| Document Title | CodeIgniter 3 to CodeIgniter 4 Migration Checklist |
-| Project | MIS |
-| Prepared For | Development, QA, DevOps, Release Management |
-| Repository Context | `C:\xampp\htdocs\MIS` |
-| Current Runtime Snapshot | CodeIgniter 4 application structure with hybrid CI3-era coding patterns still present in selected modules |
-| Target Framework | CodeIgniter 4 |
-| Current PHP Requirement | `^8.2` as defined in `composer.json` |
-| Document Type | Internal migration and deployment checklist |
-| Status | Ready for project planning, execution, and sign-off |
-
-## Project Snapshot
-
-| Area | Current Observation | Migration Relevance |
-| --- | --- | --- |
-| Application Structure | `app`, `public`, `system`, `tests`, `writable` folders already exist | Confirms CI4 bootstrap layout is present |
-| Controllers | `Home`, `Agent`, `DuplicateEntries`, `CalcDaht`, `Mod2` | Main business modules to validate during migration |
-| Models | `Model_common`, `Model_datatable` | `Model_common` still behaves like a utility/service and should be reviewed for CI4 modeling standards |
-| Custom Helpers | `app/Helpers/secure_helper.php` | Needs helper and redirect behavior validation |
-| Sessions | File-based sessions via `WRITEPATH . 'session'` | Production permissions and timeout behavior must be verified |
-| Uploads | `writable/uploads` | File permission and file-handling regression checks required |
-| Third-Party Code | `app/ThirdParty/PhpSpreadsheet` | Candidate for Composer-based dependency management |
-| Routing | Route definitions exist in `app/Config/Routes.php` | URL compatibility and legacy endpoint validation required |
-| Testing | `tests/` structure exists | Expand beyond skeleton tests for module-level regression coverage |
-
-## Migration Scope
-
-This document is intended for a controlled migration of the MIS application from CodeIgniter 3 development patterns to CodeIgniter 4 standards, deployment model, and runtime behavior.
-
-Although this repository already uses a CodeIgniter 4 project skeleton, parts of the codebase still reflect legacy CI3 conventions such as utility-style models, procedural access control helpers, route naming carried forward from CI3, and direct SQL/query patterns that should be reviewed during migration hardening. This checklist therefore supports two goals:
-
-1. Complete migration from CI3 conventions to CI4-compliant implementation patterns.
-2. Validate that the migrated application is production-ready across development, testing, and deployment environments.
+| Document title | Botlogs CodeIgniter 3 to CodeIgniter 4 Migration Checklist |
+| Intended audience | Developers, QA/Testers, DevOps/Deployment Teams, Technical Leads |
+| Usage | Internal migration planning, execution, validation, deployment, rollback |
+| Target application | Botlogs |
+| Repository reference state | Current repository already follows a CodeIgniter 4 structure, but still contains legacy CI3-style coding patterns and migration-sensitive behaviors |
+| Framework baseline observed | CodeIgniter 4.7.0 |
+| Local PHP baseline observed | PHP 8.2.12 via `C:\xampp\php\php.exe` |
+| Primary web root | `public/` |
+| Primary runtime config | `.env` and `app/Config/*` |
+| Runtime write paths | `writable/` |
+| Main dependencies observed | PhpSpreadsheet under `app/ThirdParty` |
+| Important note | Do not copy live passwords, database secrets, or encryption values into documents, tickets, chat logs, or screenshots |
 
 ---
 
@@ -44,121 +23,105 @@ Although this repository already uses a CodeIgniter 4 project skeleton, parts of
 
 ### 1.1 Purpose of Migration
 
-The purpose of migrating from CodeIgniter 3 to CodeIgniter 4 is to modernize the application architecture, align the project with current PHP standards, improve maintainability, and reduce operational risk associated with legacy framework patterns.
+This document provides a project-specific migration runbook for Botlogs while moving from a legacy CodeIgniter 3 implementation style to a stable, supportable, and secure CodeIgniter 4 operating model.
+
+Botlogs already uses a CI4 folder layout, namespaced controllers, `.env`, and `app/Config/*`. However, the application still contains CI3-era behaviors and migration-sensitive patterns, including:
+
+- Legacy authentication logic using `md5()`
+- Custom helper-based access control
+- Manual report export headers instead of standardized response downloads
+- Broad controller responsibilities concentrated mainly in `Home.php`
+- Global CSRF filtering disabled
+- One model referencing `otherdb` even though that DB group is not currently configured
+- A current runtime permission issue where `spark routes` fails because `writable/cache` is not writable
+
+The migration effort is successful only when the application is not just running on CI4, but is also deployable, testable, supportable, and safe across local, test, UAT, and production systems.
 
 ### 1.2 Benefits of CodeIgniter 4 Over CodeIgniter 3
 
-| Benefit Area | CodeIgniter 3 | CodeIgniter 4 |
-| --- | --- | --- |
-| PHP Standards | Limited PSR alignment | Modern PSR-based architecture and autoloading |
-| Namespaces | Not native by default | First-class namespace support |
-| Environment Management | Manual config editing | `.env` driven configuration support |
-| Routing | Simpler legacy routing | Improved routing, filters, and route grouping |
-| Security | Basic protections | Better CSRF, filters, validation, and security features |
-| Testing | Limited project structure | Built-in testing support and cleaner test organization |
-| Dependency Management | Often manual | Composer-first workflow |
-| Error Handling | Simpler exception flow | Improved exceptions, logging, and debug tooling |
-| Deployment | More manual adjustment | Clear `public` and `writable` separation |
+| Area | CodeIgniter 3 | CodeIgniter 4 | Botlogs Migration Benefit |
+| --- | --- | --- | --- |
+| PHP support | Older PHP compatibility | Modern PHP support | Aligns Botlogs with PHP 8.2+ and supported runtime behavior |
+| Architecture | Minimal namespaces | PSR-4 namespaces and stronger structure | Easier maintenance of `Home`, `Agent`, models, and helpers |
+| Configuration | File/array-heavy | `.env` and typed config classes | Cleaner separation for local, UAT, and production |
+| Routing | Simpler routing model | Explicit route definitions and filters | Better control of Botlogs' route surface |
+| Security | Older defaults | Improved filters, sessions, and request handling | Better protection for login, admin, and reporting flows |
+| Testing | Limited built-in scaffolding | Stronger CLI and test structure | Easier regression testing and deployment validation |
+| Deployment | Often root-level exposure | `public/` entrypoint and `writable/` separation | Safer hosting model |
 
-### 1.3 Intended Audience
+### 1.3 Migration Objective
 
-| Audience | Primary Responsibilities |
-| --- | --- |
-| Developers | Refactor code, migrate modules, update libraries, fix compatibility issues |
-| Testers | Execute functional, regression, negative, security, and UAT test cycles |
-| Deployment Team | Prepare infrastructure, configure web server, manage permissions, deploy safely, support rollback |
+The Botlogs migration should be considered complete when:
 
-### 1.4 Migration Principles
-
-| Principle | Expected Practice |
-| --- | --- |
-| Preserve business behavior | URLs, reports, calculations, and user access should remain functionally correct |
-| Migrate incrementally | Convert configuration, routes, controllers, models, views, and libraries in controlled phases |
-| Prefer CI4-native patterns | Use namespaces, services, filters, validation, Composer, and environment variables |
-| Validate every module | Treat each business module as a separate migration checkpoint |
-| Keep rollback ready | Migration is not complete unless rollback has been tested |
+1. All functional modules operate correctly under CI4 conventions with no business regression.
+2. Environment configuration is reproducible and separated per system.
+3. Login, reports, CRUD, exports, sessions, and admin flows are validated.
+4. Security-sensitive legacy patterns are remediated or formally accepted with risk sign-off.
+5. Deployment and rollback procedures are documented and testable.
 
 ---
 
 ## 2. Pre-Migration Checklist
 
-### 2.1 Pre-Migration Readiness Table
+### 2.1 Backup Requirements
 
-| Checkpoint | Action | Owner | Status | Evidence/Notes |
-| --- | --- | --- | --- | --- |
-| Code freeze window approved | Freeze feature changes during migration | Project Manager | [ ] |  |
-| Production backup completed | Full database and application backup taken | DevOps/DBA | [ ] |  |
-| Staging environment ready | Match production PHP, DB, extensions, and web server | DevOps | [ ] |  |
-| Migration branch created | Create dedicated branch for CI4 migration hardening | Development | [ ] |  |
-| Risk review completed | Review known module and deployment risks | Tech Lead | [ ] |  |
-| Rollback owner assigned | Confirm decision-maker during release window | Release Manager | [ ] |  |
-
-### 2.2 Backup Database and Project Files
-
-| Item | Required Action | Validation |
-| --- | --- | --- |
-| Database backup | Export full production database before any schema or code deployment | Restore test completed in non-production environment |
-| Application files | Archive current project files, uploads, config, and web server settings | Archive checksum or file count verified |
-| `.env` or secret config | Backup environment-specific configuration securely | Secrets accessible only to approved team |
-| Scheduled jobs | Export cron/scheduler definitions if applicable | Scheduler inventory reviewed |
-
-#### Backup Steps
-
-1. Export the full database including schema, triggers, procedures, and seed/reference data.
-2. Back up the entire application directory including `app`, `public`, `writable`, custom scripts, and uploaded files.
-3. Capture server configuration such as Apache virtual host or Nginx server block definitions.
-4. Store backups in a secured location with timestamp and release identifier.
-5. Validate that backup restoration works before migration begins.
-
-### 2.3 PHP Version Compatibility
-
-| Checkpoint | Current/Target Guidance | Status |
-| --- | --- | --- |
-| Composer PHP requirement reviewed | This repository currently requires `PHP ^8.2` | [ ] |
-| Development machines upgraded | Developers use same major PHP version as target environment | [ ] |
-| Staging server upgraded | Staging matches production target runtime | [ ] |
-| Required extensions installed | `intl`, `mbstring`, database driver, `openssl`, `fileinfo`, `curl` if used | [ ] |
-| Deprecated PHP behavior reviewed | Dynamic properties, legacy functions, and old encryption behavior reviewed | [ ] |
-
-### 2.4 Server Requirements
-
-| Component | Minimum Expectation | Project Notes |
-| --- | --- | --- |
-| PHP | PHP 8.2 or higher for this repository | Confirm CLI and web PHP versions match |
-| Web Server | Apache 2.4+ or Nginx equivalent | `public` folder must be web root |
-| Database | MySQL/MariaDB compatible with `MySQLi` | Validate SQL modes and collation |
-| File Permissions | Web server write access to `writable` only | Prevent write access to code folders |
-| Composer | Available in build or deployment pipeline | Needed for dependency management |
-
-### 2.5 Environment Setup
-
-| Checkpoint | Action | Owner | Status |
+| Checkpoint | Required Action | Owner | Evidence |
 | --- | --- | --- | --- |
-| Local environment prepared | Install Composer dependencies and configure `.env` | Development | [ ] |
-| Staging environment prepared | Match production as closely as possible | DevOps | [ ] |
-| Debug configuration reviewed | Disable debug in production, enable only where required | DevOps | [ ] |
-| Log retention configured | Ensure `writable/logs` retention is defined | DevOps | [ ] |
-| Session storage verified | Confirm `writable/session` exists and is writable | DevOps | [ ] |
+| Project backup | Back up the full project directory including `app/`, `public/`, `system/`, `tests/`, `writable/`, `.env`, and server config | DevOps / Developer | Backup archive name and timestamp |
+| Database backup | Back up the Botlogs application database | DBA / DevOps | SQL dump name and timestamp |
+| Restore validation | Restore backup into a non-production environment and confirm startup | DevOps / QA | Restore log and smoke test result |
+| Config snapshot | Capture current vhost/site config, rewrite config, and PHP version | DevOps | Configuration export |
+| Change freeze | Freeze schema and risky code changes during the cutover window | Technical Lead | Approved change window |
 
-### 2.6 Existing Third-Party Libraries and Modules Review
+### 2.2 PHP Version Compatibility
 
-| Library/Module | Current Observation | Required Action | Status |
+| Item | Requirement | Botlogs Note | Validation |
 | --- | --- | --- | --- |
-| PhpSpreadsheet | Present under `app/ThirdParty/PhpSpreadsheet` | Prefer Composer-managed dependency or validate manual autoload strategy | [ ] |
-| Custom helper `secure_helper.php` | Used for access restriction and encryption helpers | Review redirect flow, encryption method, and CI4 helper loading | [ ] |
-| Agent/User management | Routed through `Agent` controller | Validate CRUD, validation, role logic | [ ] |
-| Reporting modules | `Home`, `DuplicateEntries`, `CalcDaht`, `Mod2` | Validate query output, Excel export, filters, route behavior | [ ] |
-| Upload/download flows | `upload_new_daht`, export actions | Validate uploaded file security and download headers | [ ] |
+| PHP runtime | 8.2+ | `composer.json` requires `^8.2` | Validate on all environments |
+| PHP CLI | Available for `spark` and tests | `C:\xampp\php\php.exe` is available locally | Standardize CLI command usage |
+| Dynamic properties | Avoid | BaseController notes PHP 8.2 dynamic property deprecation | Static review and runtime testing |
+| Deprecated patterns | Review | Legacy CI3-style code still exists in login and reporting flows | Log review and UAT |
 
-### 2.7 Pre-Migration Technical Review Questions
+### 2.3 Server Requirements
 
-| Question | Decision Needed |
-| --- | --- |
-| Are all legacy CI3 libraries identified and classified as replace, refactor, or retain? |  |
-| Are any controllers still depending on CI3-style super-object assumptions? |  |
-| Are direct SQL strings safe, parameterized, and compatible with CI4 conventions? |  |
-| Are all business URLs documented for regression testing? |  |
-| Are Excel, upload, and session-heavy workflows included in the test scope? |  |
+| Requirement | Minimum Expectation | Botlogs Relevance |
+| --- | --- | --- |
+| Web server | Apache or Nginx | `public/.htaccess` exists and expects rewrite support |
+| PHP | 8.2+ | Required by current framework baseline |
+| Extensions | `intl`, `mbstring`, `mysqli`, `json`, `fileinfo` | Required for framework and database access |
+| Spreadsheet support | PhpSpreadsheet dependency availability | Used for Excel export generation |
+| File permissions | Read access to project, write access to `writable/` | Required for cache, session, and logs |
+| Database access | Reachable MySQL instance | Required for login, task, and reporting data |
+
+### 2.4 Environment Setup
+
+| Item | Required Action | Botlogs Note |
+| --- | --- | --- |
+| `.env` | Maintain separate values per local, test, UAT, and production | Already in use |
+| `CI_ENVIRONMENT` | Set correctly per stage | Local environment is currently configured as development |
+| Base URL | Set per environment | Local config currently points to `/botlogs/public/` |
+| Logging | Lower log verbosity in production | Local logger threshold is verbose |
+| Cache/session paths | Confirm writable absolute runtime paths | Important because current cache write issue is already visible |
+
+### 2.5 Existing Third-Party Libraries and Modules Review
+
+| Dependency / Module | Current Location | Purpose | Migration Check |
+| --- | --- | --- | --- |
+| PhpSpreadsheet | `app/ThirdParty/PhpSpreadsheet` | Excel report export | Validate PSR-4 mapping, export generation, and file download behavior |
+| Custom helper | `app/Helpers/secure_helper.php` | Login restriction and redirect handling | Confirm CI4 compatibility and redirect behavior |
+| Custom models | `app/Models/Model_common.php`, `Model_datatable.php` | Shared DB and datatable logic | Validate Query Builder behavior and SQL safety |
+| Legacy controller | `app/Controllers/Home_v0.php` | Old code reference | Decide whether to retain, archive, or remove |
+
+### 2.6 Project-Specific Pre-Migration Risks
+
+| Risk | Impact | Mitigation |
+| --- | --- | --- |
+| Passwords still use `md5()` | Weak authentication security | Prioritize password hashing modernization |
+| `writable/cache` not writable | CLI/runtime failures | Fix permissions before UAT and production deployment |
+| CSRF globally disabled | Form submission risk | Decide and validate global or route-level CSRF |
+| `otherdb` referenced but not configured | Runtime failure if legacy code path is used | Remove dead path or define the DB group explicitly |
+| Legacy export responses use raw headers | Output/download fragility | Standardize response handling during migration |
+| Sensitive values copied into docs | Security incident | Use placeholders and secure vault references only |
 
 ---
 
@@ -166,146 +129,157 @@ The purpose of migrating from CodeIgniter 3 to CodeIgniter 4 is to modernize the
 
 ### 3.1 CI3 vs CI4 Directory Structure
 
-| CI3 Structure | CI4 Structure | Migration Notes |
-| --- | --- | --- |
-| `application/` | `app/` | Main business code now lives in `app/` |
-| `system/` | `system/` | Still framework core, but managed differently |
-| `index.php` in project root | `public/index.php` | Web root must point to `public/` |
-| `application/config` | `app/Config` | Namespaced config classes replace PHP arrays |
-| `application/controllers` | `app/Controllers` | Controllers are namespaced classes |
-| `application/models` | `app/Models` | Prefer extending `CodeIgniter\Model` |
-| `application/views` | `app/Views` | Views loaded with `view()` |
-| No `writable/` separation | `writable/` for logs, cache, sessions, uploads | Must be writable by the web server |
-| No Composer-first `vendor/` use in many projects | `vendor/` created by Composer | External packages should be managed through Composer |
+| CI3 Structure | CI4 Structure | Botlogs Current State | Migration Note |
+| --- | --- | --- | --- |
+| `application/` | `app/` | Present | Already migrated structurally |
+| `application/config/` | `app/Config/` plus `.env` | Present | Environment separation should be enforced |
+| `application/controllers/` | `app/Controllers/` | Present | Main logic sits in `Home.php` and `Agent.php` |
+| `application/models/` | `app/Models/` | Present | Shared wrapper models remain |
+| `application/views/` | `app/Views/` | Present | Smaller view surface than larger tracker apps |
+| Root `index.php` | `public/index.php` | Present | Server must target `public/` |
+| Mixed runtime writes | `writable/` | Present | Permissions must be fixed and validated |
+| Composer-managed `vendor/` | `vendor/` | Not present in project root | Botlogs currently relies on `app/ThirdParty` |
 
-### 3.2 CI4 Folder Explanations
+### 3.2 Explanation of Key CI4 Folders
 
-| Folder | Purpose | Team Responsibility |
+| Folder | Purpose | Botlogs Consideration |
 | --- | --- | --- |
-| `app/` | Application code including controllers, models, views, helpers, config | Development |
-| `public/` | Front controller and public assets only | DevOps and Development |
-| `writable/` | Logs, cache, sessions, debug output, uploads | DevOps |
-| `vendor/` | Composer-managed dependencies | Development/Build Pipeline |
+| `app/` | Controllers, models, views, helpers, config | Primary business code |
+| `public/` | Front controller and web-accessible assets | Must be the only public entrypoint |
+| `writable/` | Logs, cache, sessions | Current permissions must be validated |
+| `vendor/` | Composer-managed dependencies | Standard CI4 pattern, but not currently present |
 
 ### 3.3 Public Folder Configuration on Server
 
-| Item | Requirement | Status |
-| --- | --- | --- |
-| Apache `DocumentRoot` | Must point to `.../MIS/public` | [ ] |
-| Nginx `root` | Must point to `.../MIS/public` | [ ] |
-| Direct access to `app/` | Must be blocked | [ ] |
-| Direct access to `writable/` | Must be blocked | [ ] |
-| Asset paths | CSS/JS/images must resolve correctly from `public/` | [ ] |
+Use the following checkpoints:
 
-### 3.4 Folder Migration Checkpoints
-
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| Legacy file includes removed | Eliminate hard-coded references to CI3 root layout | [ ] |
-| Upload paths reviewed | Confirm uploads target `WRITEPATH` or safe public path | [ ] |
-| Log and cache folders reviewed | Remove legacy assumptions about writable locations | [ ] |
-| Server symlinks reviewed | Validate no old paths still referenced by deployment scripts | [ ] |
+1. Confirm the web server document root points to `.../botlogs/public`.
+2. Confirm `app/`, `system/`, `writable/`, `.env`, and other non-public paths are not browser-accessible.
+3. Confirm `public/.htaccess` or equivalent Nginx rewrite rules are active.
+4. Confirm `index.php` is removed from URLs only after rewrite validation.
+5. Confirm CSS, JS, images, and generated report links resolve correctly.
 
 ---
 
 ## 4. Configuration Migration
 
-### 4.1 Base URL
+### 4.1 Configuration Migration Table
 
-| CI3 | CI4 |
-| --- | --- |
-| `$config['base_url'] = 'http://example.com/app/';` | `public string $baseURL = 'http://example.com/';` or `.env` override |
+| Area | CI3 Typical Pattern | CI4 Target | Botlogs Current State | Validation |
+| --- | --- | --- | --- | --- |
+| Base URL | `application/config/config.php` | `.env` and `Config\App` | `.env` in use | Open login page and assets |
+| Index page | `index.php` config | `.env` / `Config\App::$indexPage` | Empty in local `.env` | Confirm clean URLs |
+| Database config | `application/config/database.php` | `app/Config/Database.php` plus `.env` | `default` defined | Validate DB connectivity |
+| Autoload | `application/config/autoload.php` | `app/Config/Autoload.php` | Custom PSR-4 mapping for PhpSpreadsheet | Validate autoloading |
+| Routes | `application/config/routes.php` | `app/Config/Routes.php` | 53 explicit routes, auto-route disabled | Smoke-test route map |
+| Session config | Config arrays | `app/Config/Session.php` | File-based sessions | Validate login persistence |
+| Security config | Hooks/config arrays | `Security.php` and `Filters.php` | CSRF alias exists, global CSRF disabled | Security review required |
 
-#### Checklist
+### 4.2 Base URL
 
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| Base URL defined | Set in `app/Config/App.php` or `.env` | [ ] |
-| Trailing slash validated | CI4 expects a trailing slash when explicitly configured | [ ] |
-| Asset URLs verified | CSS, JS, image, and download links tested | [ ] |
-| Reverse proxy scenario verified | `allowedHostnames` and proxy settings reviewed if applicable | [ ] |
+Checklist:
 
-### 4.2 Database Configuration
+1. Set `app.baseURL` separately for each environment.
+2. Do not hardcode local URLs in controllers, views, or JavaScript.
+3. Confirm `base_url()` and `site_url()` resolve correctly for:
+   - `login.html`
+   - `home.html`
+   - `report.html`
+   - report export endpoints such as `gen-excl` and `gen-excl1`
+4. In production, users should access the site without `/public/` in the final URL.
 
-| CI3 | CI4 |
-| --- | --- |
-| `application/config/database.php` array | `app/Config/Database.php` class and/or `.env` variables |
+### 4.3 Database Configuration
 
-#### Checklist
+Botlogs-specific points:
 
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| Connection group reviewed | Confirm `default` group values | [ ] |
-| Database credentials externalized | Move environment-specific values to `.env` | [ ] |
-| Character set validated | Prefer `utf8mb4` | [ ] |
-| `DBDebug` reviewed | Disable in production | [ ] |
-| Test database configured | Separate test DB or in-memory database verified | [ ] |
+- The main configured DB group is `default`.
+- `Model_datatable` contains a method that references `otherdb`, but `otherdb` is not currently configured in `Database.php`.
 
-### 4.3 Environment Variables (`.env`)
+Validation steps:
 
-| Recommended Variable | Purpose |
-| --- | --- |
-| `CI_ENVIRONMENT` | `development`, `testing`, or `production` |
-| `app.baseURL` | Environment-specific base URL |
-| `database.default.hostname` | Database host |
-| `database.default.database` | Database name |
-| `database.default.username` | Database user |
-| `database.default.password` | Database password |
-| `session.driver` | Session storage override if needed |
-| `session.savePath` | Session location if not using default writable path |
+1. Confirm `default` database credentials, charset, and connectivity per environment.
+2. Identify whether the `otherdb` code path is still required.
+3. If required, create and validate an `otherdb` group before go-live.
+4. If not required, remove or retire the dead path to reduce runtime risk.
 
-#### Example
+### 4.4 Environment Variables (`.env`)
 
-```dotenv
+Best-practice checkpoints:
+
+- Store environment-specific settings in `.env` or a secure secret store.
+- Do not expose passwords in migration documents.
+- Use masked examples only.
+
+Example:
+
+```ini
 CI_ENVIRONMENT = production
-app.baseURL = 'https://mis.example.com/'
-database.default.hostname = localhost
-database.default.database = mis
-database.default.username = mis_user
-database.default.password = change_me
+app.baseURL = 'https://botlogs.example.com/'
+app.indexPage = ''
+database.default.hostname = db-host
+database.default.database = botlogs
+database.default.username = botlogs_user
+database.default.password = ********
+logger.threshold = 1
 ```
 
-### 4.4 Autoload Configuration
+### 4.5 Autoload Configuration
 
-| CI3 | CI4 |
-| --- | --- |
-| `$autoload['libraries']`, `$autoload['helper']` | `app/Config/Autoload.php`, `BaseController::$helpers`, Composer PSR-4 |
+Botlogs currently uses:
 
-#### Checklist
+- App namespace mapping
+- PSR-4 mapping for `PhpOffice\PhpSpreadsheet`
+- Helper autoload entries for `url`, `form`, and `secure`
 
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| Helper autoload reviewed | Move common helpers to `BaseController::$helpers` if globally needed | [ ] |
-| Namespace mappings reviewed | Ensure custom namespaces resolve correctly | [ ] |
-| Third-party loading reviewed | Prefer Composer over manual includes | [ ] |
-| Legacy library autoload removed | Remove CI3-specific autoload assumptions | [ ] |
+Validation steps:
 
-### 4.5 Routes Migration
+1. Open report screens that trigger spreadsheet export.
+2. Confirm helper functions load without manual `helper()` calls.
+3. Confirm no class-not-found errors occur in `Home.php`.
 
-| CI3 Example | CI4 Example |
-| --- | --- |
-| `$route['login.html'] = 'home/index';` | `$routes->add('login.html', 'Home::index');` |
+### 4.6 Routes Migration
 
-#### Current Project Note
+Botlogs route review must verify:
 
-The current project already defines routes in `app/Config/Routes.php`, including legacy-style URL patterns such as `login.html`, `home.html`, `auto-daht.html`, and report/export endpoints. These URLs should be treated as backward compatibility requirements during testing.
+- Route path parity with legacy URLs
+- Admin, login, and reporting URLs still resolve
+- AJAX endpoints like `check-task`, `check-cat`, `subcat-menu`, `get-cat`, and datatable endpoints still work
+- Export endpoints still return valid files
+- Route coverage is complete before controller methods change
 
-#### Checklist
+Current project observations:
 
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| All legacy routes inventoried | Create route-to-feature map before release | [ ] |
-| Route HTTP methods reviewed | Use `get`, `post`, or grouped routes where possible | [ ] |
-| 404 handling validated | Confirm unknown routes and moved routes behave correctly | [ ] |
-| Route filters applied | Authentication and CSRF coverage reviewed | [ ] |
+- `setAutoRoute(false)` is already enabled, which is preferable for production safety
+- 53 route definitions are currently declared
+
+### 4.7 CI3 vs CI4 Example: Routes Configuration
+
+```php
+// CI3
+$route['login.html'] = 'home/index';
+$route['report.html'] = 'home/task_report';
+
+// CI4
+$routes->add('login.html', 'Home::index');
+$routes->add('report.html', 'Home::task_report');
+```
 
 ---
 
 ## 5. Controller Migration
 
-### 5.1 Namespace Usage
+### 5.1 Controller Conversion Checklist
 
-CI4 controllers must be namespaced and typically live under `App\Controllers`.
+| Topic | CI3 Pattern | CI4 Pattern | Botlogs Note |
+| --- | --- | --- | --- |
+| Namespace | Often absent | `namespace App\Controllers;` | Already in use |
+| Base class | `CI_Controller` | `BaseController` | Already in use |
+| Input handling | `$this->input` | `$this->request` | Largely migrated |
+| Output | `load->view()`, raw output | `return view()`, response objects | Mixed usage remains |
+| Redirects | `redirect()` or raw headers | `return redirect()->to(...)` | Mixed; export flows still use raw headers |
+| Session | Loaded library | `session()` / typed property | Widely used |
+
+### 5.2 Namespace and BaseController Example
 
 ```php
 // CI3
@@ -313,12 +287,10 @@ class Home extends CI_Controller
 {
     public function index()
     {
-        $this->load->view('log_in');
+        $this->load->view('login');
     }
 }
-```
 
-```php
 // CI4
 namespace App\Controllers;
 
@@ -326,161 +298,121 @@ class Home extends BaseController
 {
     public function index()
     {
-        return view('log_in');
+        return view('login');
     }
 }
 ```
 
-### 5.2 Extending `BaseController`
-
-| CI3 | CI4 |
-| --- | --- |
-| Extend `CI_Controller` | Extend `App\Controllers\BaseController` |
-
-#### Checklist
-
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| All controllers namespaced | Verify `namespace App\Controllers;` present | [ ] |
-| All controllers extend `BaseController` where appropriate | Standardize shared behavior | [ ] |
-| Shared helpers centralized | Move common helpers into `BaseController::$helpers` if justified | [ ] |
-| Controller constructors reviewed | Avoid excessive manual service loading when services can be injected or requested cleanly | [ ] |
-
 ### 5.3 Request/Response Handling
 
-| CI3 Pattern | CI4 Pattern |
-| --- | --- |
-| `$this->input->post('field')` | `$this->request->getPost('field')` |
-| `echo` and exit-heavy responses | `return`, `$this->response`, redirects, JSON responses |
+Controller review must confirm:
 
-#### Example
-
-```php
-// CI3
-$dateFrom = $this->input->post('date_from');
-redirect('home');
-```
-
-```php
-// CI4
-$dateFrom = $this->request->getPost('date_from');
-return redirect()->to('home.html');
-```
+- POST requests use `$this->request->getPost()`
+- Query-string requests use `$this->request->getGet()`
+- File downloads use CI4 response patterns where possible
+- Redirects do not rely on legacy CI3 helpers or raw header usage unnecessarily
+- AJAX endpoints return consistent plain-text, JSON, or HTML fragments
 
 ### 5.4 Input Class Replacement
 
-| CI3 API | CI4 Replacement |
-| --- | --- |
-| `$this->input->post()` | `$this->request->getPost()` |
-| `$this->input->get()` | `$this->request->getGet()` |
-| `$this->input->post_get()` | `$this->request->getVar()` |
-| `$this->input->is_ajax_request()` | `$this->request->isAJAX()` |
+| CI3 Usage | CI4 Replacement | Botlogs Relevance |
+| --- | --- | --- |
+| `$this->input->post('field')` | `$this->request->getPost('field')` | Used across login, create, update, and reporting |
+| `$this->input->get('field')` | `$this->request->getGet('field')` | Used in lookup and validation endpoints |
+| `$this->input->server()` | `$this->request->getServer()` | Use if server-aware logic is introduced |
+| `$this->input->is_ajax_request()` | `$this->request->isAJAX()` | Useful for tightening AJAX-only endpoints |
 
 ### 5.5 Helper Loading
 
-| CI3 | CI4 |
-| --- | --- |
-| `$this->load->helper('url');` | `helper('url');` or preload via `BaseController::$helpers` |
+```php
+// CI3
+$this->load->helper(['url', 'form']);
 
-### 5.6 Controller Migration Checklist
+// CI4
+helper(['url', 'form']);
+```
 
-| Checkpoint | Action | Project Focus |
-| --- | --- | --- |
-| Namespaces added | Add namespace declarations in all controllers | All controllers |
-| Responses normalized | Replace raw echo/exit where possible with `return` or response objects | `Home`, `CalcDaht`, `DuplicateEntries`, `Mod2` |
-| Access control reviewed | Move helper-based access checks toward filters or consistent response flow | `secure_helper.php`, login-protected routes |
-| Validation integrated | Replace manual checks with CI4 validation services | Form submission actions |
-| File handling modernized | Use uploaded file APIs and response downloads | Upload/export flows |
+Botlogs note:
 
-### 5.7 Project-Specific Controller Notes
-
-| Controller | Migration Observation | Action |
-| --- | --- | --- |
-| `Home` | Large multi-responsibility controller | Consider splitting by domain over time |
-| `CalcDaht` | Uses CI4 request/session/db, but contains legacy-style flow and direct SQL strings | Validate logic, refactor safely, add tests |
-| `DuplicateEntries` | Large reporting controller with multiple export/report actions | Regression-test outputs and memory usage |
-| `Agent` | CRUD flow and role-sensitive operations | Validate form validation and route protection |
-| `Mod2` | QC/reporting functions | Review route exposure and testing coverage |
+- `Config\Autoload` already autoloads `url`, `form`, and `secure`.
+- Keep helper usage centralized and minimize helper-side business logic growth.
 
 ---
 
 ## 6. Model Migration
 
-### 6.1 CI3 Model Conversion to CI4 Model
+### 6.1 Model Conversion Strategy
+
+Botlogs currently uses:
+
+- `Model_common`
+- `Model_datatable`
+
+These are shared utility/wrapper models rather than fully structured domain models.
+
+Recommended approach:
+
+1. Preserve current behavior first.
+2. Validate all SQL/datatable behavior before style refactoring.
+3. Convert stable areas to `CodeIgniter\Model` subclasses only where it adds clear value.
+4. Add stricter validation and field protection after regression coverage is in place.
+
+### 6.2 CI3 vs CI4 Example: Generic Model Conversion
 
 ```php
 // CI3
-class User_model extends CI_Model
+class Task_model extends CI_Model
 {
-    public function getUser($id)
+    public function getTasks()
     {
-        return $this->db->get_where('users', ['id' => $id])->row_array();
+        return $this->db->get('task')->result_array();
     }
 }
-```
 
-```php
 // CI4
 namespace App\Models;
 
 use CodeIgniter\Model;
 
-class UserModel extends Model
+class TaskModel extends Model
 {
-    protected $table = 'users';
-    protected $primaryKey = 'id';
-    protected $allowedFields = ['name', 'email'];
+    protected $table = 'task';
+    protected $returnType = 'array';
 
-    public function getUser(int $id): ?array
+    public function getTasks(): array
     {
-        return $this->where('id', $id)->first();
+        return $this->findAll();
     }
 }
 ```
 
-### 6.2 Query Builder Changes
+### 6.3 Query Builder Changes
 
-| CI3 | CI4 |
-| --- | --- |
-| `$this->db->get_where('users', ['id' => $id])` | `$this->db->table('users')->where('id', $id)->get()` |
-| `$query->row_array()` | `$query->getRowArray()` |
-| `$query->result_array()` | `$query->getResultArray()` |
+Checklist:
 
-### 6.3 Database Connection Handling
+- Re-test `select()`, `where()`, `insert()`, `update()`, and `delete()`
+- Re-test raw SQL used in datatable rendering
+- Review string-built SQL carefully for search and ordering
+- Re-test affected-row behavior because some wrapper methods treat zero affected rows as failure
 
-| Approach | Guidance |
-| --- | --- |
-| `\Config\Database::connect()` | Acceptable when used intentionally |
-| Extend `CodeIgniter\Model` | Preferred for table-based data access |
-| Reusable service-style classes | Acceptable if class is not truly an ORM-style model |
+### 6.4 Database Connection Handling
 
-### 6.4 Validation Integration
-
-CI4 models support validation rules directly through model configuration or controller/service-level validation.
-
-```php
-protected $validationRules = [
-    'email' => 'required|valid_email',
-    'name'  => 'required|min_length[3]',
-];
-```
-
-### 6.5 Model Migration Checklist
-
-| Checkpoint | Action | Status |
+| Item | Botlogs Note | Validation |
 | --- | --- | --- |
-| Legacy models identified | List all model and utility data-access classes | [ ] |
-| Proper inheritance reviewed | Convert table-backed models to extend `CodeIgniter\Model` | [ ] |
-| Allowed fields set | Prevent mass assignment issues | [ ] |
-| Query builder syntax verified | Update result and builder methods | [ ] |
-| Validation rules centralized | Add model or request validation where applicable | [ ] |
+| Default DB | Primary configured group | Validate login, report, and CRUD operations |
+| `otherdb` reference | Present in `Model_datatable`, not configured | Remove or configure explicitly |
+| SQL safety | Datatable methods build SQL strings dynamically | Validate search inputs and escaping behavior |
+| Test DB group | `tests` group exists | Review if automated tests are to be expanded |
 
-### 6.6 Project-Specific Model Notes
+### 6.5 Validation Integration
 
-| Model/Class | Observation | Recommendation |
-| --- | --- | --- |
-| `Model_datatable` | Already extends `Model` | Validate builder and escaping logic |
-| `Model_common` | Acts as a generic DB utility, not a standard CI4 model | Decide whether to keep as a service/repository or convert parts into dedicated models |
+At minimum, validate:
+
+- Login credentials
+- User creation and password reset fields
+- Bot, task, and trigger creation forms
+- Report filter values
+- Export request parameters
 
 ---
 
@@ -488,51 +420,52 @@ protected $validationRules = [
 
 ### 7.1 View Loading Changes
 
-| CI3 | CI4 |
-| --- | --- |
-| `$this->load->view('header');` | `echo view('header');` or `return view('header');` |
-
-#### Example
-
 ```php
 // CI3
-$data['users'] = $users;
-$this->load->view('user_list', $data);
+$this->load->view('header');
+$this->load->view('report', $data);
+$this->load->view('footer');
+
+// CI4
+return view('inc_l/hd')
+    . view('form_report', $data)
+    . view('inc_l/ftr');
 ```
 
-```php
-// CI4
-return view('user_list', ['users' => $users]);
-```
+Botlogs note:
+
+- This CI4 view-composition pattern is already common in `Home.php` and `Agent.php`.
 
 ### 7.2 Passing Data to Views
 
-| Checkpoint | Action | Status |
+| CI3 Pattern | CI4 Pattern | Botlogs Usage |
 | --- | --- | --- |
-| Array payloads reviewed | Replace implicit variable assumptions with explicit data arrays | [ ] |
-| Escaping reviewed | Use `esc()` where untrusted data is rendered | [ ] |
-| Repeated partials standardized | Use shared headers/footers/sections | [ ] |
+| `$this->load->view('x', $data)` | `return view('x', $data)` | Standard for edit and report screens |
+| View state via session | Still possible | Used heavily for flash messages and logged-in user state |
 
 ### 7.3 Layout Handling
 
-CI4 supports cleaner layout composition through multiple `view()` calls or view layouts/sections.
+Botlogs commonly uses:
 
-```php
-echo view('inc_l/hd');
-echo view('form_daht_report', $data);
-echo view('inc_l/ftr');
-```
+- `inc_l/hd`
+- page-specific view
+- `inc_l/ftr`
 
-Where practical, migrate high-reuse pages to structured layouts and sections for easier maintenance.
+Checklist:
 
-### 7.4 View Migration Checklist
+1. Confirm header/footer partials render correctly after route or config changes.
+2. Confirm assets under `public/` load on all pages.
+3. Confirm report/export forms continue to submit correctly.
 
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| All views accessible from `app/Views` | Confirm path references are correct | [ ] |
-| Header/footer includes verified | Test pages with partial rendering | [ ] |
-| Form CSRF tokens added | Ensure protected forms render tokens where enabled | [ ] |
-| Validation errors displayed | Standardize feedback rendering | [ ] |
+### 7.4 View-Specific Validation
+
+Validate the following:
+
+- Form action URLs
+- Export form URLs
+- Session flash messages
+- Admin-only screen rendering
+- CSRF token placement if CSRF protection is enabled
 
 ---
 
@@ -540,357 +473,321 @@ Where practical, migrate high-reuse pages to structured layouts and sections for
 
 ### 8.1 Custom Libraries Conversion
 
-| Legacy Pattern | CI4 Approach |
-| --- | --- |
-| CI3 library loaded via `$this->load->library()` | Use namespaced classes, services, Composer packages, or dedicated helper/service classes |
+| Component | Current Location | Review Required |
+| --- | --- | --- |
+| Custom helper | `app/Helpers/secure_helper.php` | Redirect handling, session access, encryption helper behavior |
+| Spreadsheet integration | `app/ThirdParty/PhpSpreadsheet` | Export compatibility and memory usage |
+| Shared wrappers | `app/Models/*` | Return behavior and SQL patterns |
 
 ### 8.2 Helper Compatibility
 
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| All custom helpers reviewed | Confirm function naming, redirect flow, and side effects | [ ] |
-| Global helper collisions checked | Ensure function names do not conflict with CI4/system helpers | [ ] |
-| Autoload strategy defined | Explicit `helper()` calls or shared helper list | [ ] |
+Checklist:
+
+- Confirm helper functions do not depend on CI3 super-object behavior
+- Confirm access-control helpers behave correctly in CI4 request flow
+- Review encryption helper functions and whether they are still needed
+- Confirm redirect helpers do not create double-output or header timing issues
 
 ### 8.3 Session Handling Changes
 
-| CI3 | CI4 |
-| --- | --- |
-| `$this->session->userdata('user_logged')` | `session()->get('user_logged')` |
-| Manual session loading | Session service/config-driven session usage |
-
-#### Example
-
-```php
-// CI3
-$user = $this->session->userdata('user_logged');
-```
-
-```php
-// CI4
-$user = session()->get('user_logged');
-```
+| Topic | CI3 | CI4 | Botlogs Note |
+| --- | --- | --- | --- |
+| Session access | Loaded library | `session()` / typed session property | Already in use |
+| Flashdata | Supported | Supported | Used for login, create, update, and error messages |
+| Storage | Configurable | File handler by default | Permission validation required |
 
 ### 8.4 Email Library Updates
 
-| CI3 | CI4 |
-| --- | --- |
-| `$this->load->library('email');` | `$email = service('email');` |
+Current repo observation:
 
-#### Example
+- No dedicated email-sending module or mail library integration was observed in the active Botlogs codebase.
 
-```php
-$email = service('email');
-$email->setTo('user@example.com');
-$email->setSubject('Password Reset');
-$email->setMessage('Your reset link');
-$email->send();
-```
+Migration action:
 
-### 8.5 Project-Specific Notes
-
-| Item | Observation | Recommendation |
-| --- | --- | --- |
-| `secure_helper.php` | Uses redirect and exit pattern for access control | Consider moving login checks to CI4 filters for consistency |
-| `PhpSpreadsheet` | Embedded under `app/ThirdParty` | Prefer Composer package management if project policy allows |
-| Session config | FileHandler with `WRITEPATH/session` | Validate permissions and session cleanup strategy |
+1. Treat email testing as not applicable unless email functionality exists outside the current repository or is added later.
+2. If email is introduced, store SMTP settings in `.env`, not in code.
 
 ---
 
 ## 9. Security Updates
 
-### 9.1 Security Checklist
+### 9.1 CSRF Handling
 
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| CSRF enabled where required | Validate form protection and AJAX compatibility | [ ] |
-| XSS output escaping reviewed | Escape output in views and reports | [ ] |
-| Validation rules applied | Replace manual request trust with validation | [ ] |
-| Authentication flow reviewed | Harden login, logout, and session fixation controls | [ ] |
-| Session security reviewed | Cookie settings, regeneration, timeout, and storage path validated | [ ] |
-| File upload security reviewed | MIME validation, extension whitelist, storage path review | [ ] |
+Current Botlogs observations:
 
-### 9.2 CSRF Handling
+- `Config\Filters` defines the `csrf` alias
+- Global CSRF filtering is commented out
+- Forms reviewed do not currently show `csrf_field()`
 
-| CI3 | CI4 |
-| --- | --- |
-| Config-driven with manual view handling in many projects | Filter-based support with helper/form integration |
+Required actions:
 
-### 9.3 XSS Filtering
+1. Decide whether to enable global CSRF or apply it route-by-route.
+2. Add `csrf_field()` to forms if CSRF is enabled.
+3. Re-test login, create, edit, and export flows after enabling.
 
-CI4 does not encourage blanket input filtering as a substitute for output escaping. Use validation plus contextual output escaping such as `esc($value)`.
+### 9.2 XSS Filtering
 
-### 9.4 Validation Rules
+Use:
 
-Prefer centralized validation rules instead of scattered manual `if` conditions.
+- Output escaping in views
+- Validation at input boundaries
+- Careful review of dynamic report and datatable output
 
-### 9.5 Authentication and Session Security
+### 9.3 Validation Rules
 
-| Item | Recommended Practice |
-| --- | --- |
-| Session regeneration | Confirm `timeToUpdate` and `regenerateDestroy` meet policy |
-| Timeout behavior | Validate forced logout after inactivity |
-| Role validation | Re-test administrator-only actions such as DAHT posting and user management |
-| Secure cookies | Use secure cookie settings in HTTPS environments |
+Priority validation areas:
+
+- Login
+- User creation and password reset
+- Bot/task/trigger creation
+- Report filters and export criteria
+
+### 9.4 Authentication and Session Security
+
+Priority actions:
+
+- Replace `md5()` with `password_hash()` / `password_verify()`
+- Confirm logout fully clears session state
+- Confirm session regeneration policy
+- Confirm unauthorized users cannot access admin-only functions
 
 ---
 
-## 10. Migration Risks and Mitigations
+## 10. Project-Specific Migration Hotspots
 
-| Risk | Impact | Likelihood | Mitigation | Owner |
-| --- | --- | --- | --- | --- |
-| Legacy URL breakage | Users cannot access known pages | Medium | Maintain current route aliases and test all published URLs | Development/QA |
-| Session path or cookie misconfiguration | Login loops, forced logout, role errors | High | Validate session driver, save path, cookie name, and timeout in every environment | DevOps/QA |
-| Public folder misconfiguration | 404 errors, asset failures, security exposure | High | Point web root to `public/` and test rewritten URLs before go-live | DevOps |
-| Direct SQL incompatibility or regression | Reports or CRUD results become incorrect | High | Compare row counts and sample outputs before and after release | Development/QA |
-| Third-party library loading issues | Excel export/import fails | Medium | Standardize PhpSpreadsheet loading and verify export/download flows | Development |
-| Writable permission problems | Sessions, uploads, cache, logs fail | High | Pre-validate `writable` ownership and permissions | DevOps |
-| Mixed CI3/CI4 coding patterns | Hard-to-trace runtime defects | Medium | Use code review checklist and targeted refactoring for shared patterns | Development |
-| Performance regressions in large reports | Slow dashboards or export timeouts | Medium | Benchmark duplicate-entry, live QC, shadow, and DAHT reports in staging | Development/QA |
+| Hotspot | Current Observation | Required Action |
+| --- | --- | --- |
+| Authentication | Passwords use `md5()` | Prioritize password hardening |
+| Route safety | `setAutoRoute(false)` already set | Preserve explicit-route discipline |
+| CSRF | Alias exists, not globally enabled | Define final protection model |
+| Cache/runtime permissions | `spark routes` currently fails because `writable/cache` is not writable | Fix filesystem permissions before testing and deployment |
+| Legacy DB reference | `otherdb` referenced in model, not configured | Remove dead code or add config |
+| Export handling | Excel downloads use raw header output | Standardize on response-based downloads where practical |
+| Legacy controller copy | `Home_v0.php` still exists | Decide retain/archive/remove |
 
 ---
 
 ## 11. Server Deployment Checklist
 
-### 11.1 Deployment Readiness Table
+### 11.1 Deployment Checklist
 
-| Checkpoint | Action | Owner | Status | Evidence |
-| --- | --- | --- | --- | --- |
-| Release package built | Install dependencies and package deployment artifact | DevOps | [ ] |  |
-| Environment file ready | Production `.env` prepared securely | DevOps | [ ] |  |
-| Database backup completed | Backup timestamp recorded | DBA | [ ] |  |
-| Maintenance window approved | Stakeholders informed | Release Manager | [ ] |  |
-| Rollback package ready | Previous stable release archived | DevOps | [ ] |  |
+| Checkpoint | Apache | Nginx | Validation |
+| --- | --- | --- | --- |
+| Document root points to `public/` | Required | Required | Homepage loads without exposing project root |
+| Rewrite rules active | `public/.htaccess` | `try_files` equivalent | Clean URLs resolve |
+| `index.php` removed from URLs | Yes | Yes | Route smoke test |
+| `writable/` writable | Yes | Yes | Cache, session, and log test |
+| `.env` secured | Yes | Yes | Config audit |
+| PHP 8.2+ available | Yes | Yes | CLI and web validation |
+| Required extensions enabled | Yes | Yes | Extension inventory |
 
-### 11.2 Apache/Nginx Configuration
+### 11.2 Apache Configuration Notes
 
-| Item | Apache | Nginx |
-| --- | --- | --- |
-| Web root | `DocumentRoot /path/to/MIS/public` | `root /path/to/MIS/public;` |
-| Front controller | `public/index.php` | `try_files $uri $uri/ /index.php?$query_string;` |
-| Protected directories | Deny direct access to `app`, `system`, `writable`, `tests` | Do not expose these directories under web root |
+1. Point the virtual host document root to `.../botlogs/public`.
+2. Enable `mod_rewrite`.
+3. Confirm `.htaccess` is honored.
+4. Disable directory listing.
+5. Confirm server does not expose non-public paths.
 
-### 11.3 Rewrite Rules
+### 11.3 Nginx Configuration Notes
 
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| `.htaccess` reviewed | Confirm Apache rewrite rules support clean URLs | [ ] |
-| Nginx fallback reviewed | Confirm `try_files` sends unresolved routes to `index.php` | [ ] |
-| `index.php` visibility confirmed | Hide `index.php` where intended and test both normal and edge routes | [ ] |
+Example:
+
+```nginx
+location / {
+    try_files $uri $uri/ /index.php?$query_string;
+}
+```
+
+Additional checks:
+
+- Point `root` to `public/`
+- Pass PHP requests correctly
+- Deny access to non-public application paths
 
 ### 11.4 Public Directory Mapping
 
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| `public/` mapped as web root | Required | [ ] |
-| Asset references validated | CSS, JS, images, downloads tested | [ ] |
-| Old root entry points removed | Prevent accidental routing to wrong document root | [ ] |
+Mandatory controls:
+
+- Do not expose `app/`, `system/`, `writable/`, or `.env`
+- Do not rely on `/public/` in user-facing production URLs
+- Configure the site correctly at the web-server level
 
 ### 11.5 File Permissions
 
-| Path | Required State | Status |
+| Path | Expected Access | Why |
 | --- | --- | --- |
-| Application code | Read-only for runtime user where possible | [ ] |
-| `writable/logs` | Writable | [ ] |
-| `writable/cache` | Writable | [ ] |
-| `writable/session` | Writable | [ ] |
-| `writable/uploads` | Writable | [ ] |
+| `public/` | Readable by web server | Public entrypoint and assets |
+| `writable/` | Writable by PHP runtime | Cache, logs, sessions |
+| `.env` | Readable by app, not web-exposed | Environment configuration |
 
-### 11.6 Environment Setup on Production
+### 11.6 Production Environment Setup
 
-| Checkpoint | Action | Status |
-| --- | --- | --- |
-| `CI_ENVIRONMENT=production` | Set and verify | [ ] |
-| Production base URL set | Verify HTTPS and canonical host | [ ] |
-| DB credentials applied | Verify with smoke test | [ ] |
-| Debug disabled | Ensure stack traces are not public | [ ] |
-| Cron/jobs revalidated | Re-enable only after smoke tests pass | [ ] |
-
-### 11.7 Deployment Execution Checklist
-
-| Step | Action | Owner | Status |
-| --- | --- | --- | --- |
-| 1 | Place application in maintenance mode if required | DevOps | [ ] |
-| 2 | Take final pre-release backup | DBA/DevOps | [ ] |
-| 3 | Deploy code artifact | DevOps | [ ] |
-| 4 | Install Composer dependencies | DevOps | [ ] |
-| 5 | Apply environment file | DevOps | [ ] |
-| 6 | Validate permissions on `writable/` | DevOps | [ ] |
-| 7 | Run smoke tests | QA/Development | [ ] |
-| 8 | Release traffic | Release Manager | [ ] |
+1. Set `CI_ENVIRONMENT = production`.
+2. Set the correct production `app.baseURL`.
+3. Lower the log threshold.
+4. Disable development-only debugging output.
+5. Validate report export after permission and memory checks.
 
 ---
 
 ## 12. Testing Checklist
 
-### 12.1 Test Execution Template
+### 12.1 Module Test Matrix
 
-| Test ID | Module | Scenario | Expected Result | Tester | Status | Evidence |
-| --- | --- | --- | --- | --- | --- | --- |
-|  |  |  |  |  | [ ] Pass / [ ] Fail |  |
-
-### 12.2 Login Module
-
-| Checkpoint | Test Scenario | Expected Result | Status |
-| --- | --- | --- | --- |
-| Login page loads | Open `login.html` | Page renders without asset or route errors | [ ] |
-| Valid credentials | Login with valid user | Redirect to dashboard/home page | [ ] |
-| Invalid credentials | Login with wrong password | Controlled validation error shown | [ ] |
-| Unauthorized direct access | Open protected URL without login | User redirected to login with message | [ ] |
-| Logout | Trigger logout action | Session cleared and login page shown | [ ] |
-| Session persistence | Refresh after login | User remains logged in until timeout/logout | [ ] |
-
-### 12.3 Dashboard
-
-| Checkpoint | Test Scenario | Expected Result | Status |
-| --- | --- | --- | --- |
-| Dashboard route | Open `home.html` as valid user | Dashboard loads | [ ] |
-| Role-sensitive menus | Login as different user roles | Correct menus/options shown | [ ] |
-| Data widgets | Dashboard counters/reports load | Counts match database samples | [ ] |
-| Navigation | Menu links open correct routes | No broken links or 404s | [ ] |
-
-### 12.4 CRUD Operations
-
-| Area | Test Scenario | Expected Result | Status |
-| --- | --- | --- | --- |
-| Agent/User create | Add new user/agent | Record saved and visible in list | [ ] |
-| Agent/User update | Edit existing user/agent | Changes persist correctly | [ ] |
-| Agent/User delete/deactivate | Remove or deactivate record | Expected state change occurs without side effects | [ ] |
-| Task create | Add task/subcategory | Record stored with correct validation | [ ] |
-| Task edit | Edit existing task | Update reflected everywhere used | [ ] |
-| Restore | Restore soft-deleted or hidden record where applicable | Record becomes available again | [ ] |
-| Validation | Submit blank/invalid data | Validation errors displayed | [ ] |
-
-### 12.5 Reports
-
-| Report/Feature | Test Scenario | Expected Result | Status |
-| --- | --- | --- | --- |
-| User statistics report | Run report for sample date range | Totals and grouping match legacy output | [ ] |
-| Duplicate entries report | Generate duplicate entries list | Data set and filters behave correctly | [ ] |
-| Live QC report | Run live QC report | Report returns expected grouped records | [ ] |
-| Shadow entries report | Run shadow report | Output matches baseline sample | [ ] |
-| DAHT calculation report | Generate Auto DAHT report | Calculation, totals, variation, and export data are correct | [ ] |
-| Report filters | Test category/date/user filters | Filters apply accurately | [ ] |
-
-### 12.6 File Upload/Download
-
-| Checkpoint | Test Scenario | Expected Result | Status |
-| --- | --- | --- | --- |
-| DAHT upload page | Open upload page | Form renders correctly | [ ] |
-| Valid upload | Upload allowed file | File accepted and processed successfully | [ ] |
-| Invalid upload | Upload unsupported file | Validation error shown | [ ] |
-| Large upload | Test near max size | Defined behavior observed | [ ] |
-| Excel export | Export report to XLS/XLSX | File downloads correctly and opens | [ ] |
-| Download headers | Inspect filename and content type | Browser handles download correctly | [ ] |
-
-### 12.7 API Integration
-
-| Checkpoint | Test Scenario | Expected Result | Status |
-| --- | --- | --- | --- |
-| External endpoint availability | Execute integration call if applicable | Response handled without fatal errors | [ ] |
-| Authentication | Validate API credentials/tokens | Secure and functional | [ ] |
-| Error handling | Simulate timeout/failure | Application shows controlled fallback | [ ] |
-| Logging | Verify failures are logged | Support team can diagnose issues | [ ] |
-
-### 12.8 Email Functionality
-
-| Checkpoint | Test Scenario | Expected Result | Status |
-| --- | --- | --- | --- |
-| SMTP/config load | Test email configuration | No configuration error | [ ] |
-| Functional email | Trigger email workflow | Email sent and delivered | [ ] |
-| Invalid recipient handling | Use failing address | Error logged and user-facing handling remains controlled | [ ] |
-| Template rendering | Review message body | Correct formatting and links | [ ] |
-
-### 12.9 Role/Permission Testing
-
-| Checkpoint | Test Scenario | Expected Result | Status |
-| --- | --- | --- | --- |
-| Admin-only actions | Access DAHT posting, user management as non-admin | Access blocked | [ ] |
-| Standard user actions | Verify normal menu access | User sees only authorized features | [ ] |
-| Hidden URLs | Directly open protected routes | Unauthorized user redirected or denied | [ ] |
-
-### 12.10 Session Timeout Testing
-
-| Checkpoint | Test Scenario | Expected Result | Status |
-| --- | --- | --- | --- |
-| Idle timeout | Leave session idle beyond configured limit | User must re-authenticate | [ ] |
-| Active session | Continue using application within timeout window | Session remains valid | [ ] |
-| Concurrent tabs | Open multiple tabs and logout | All protected tabs require re-authentication after next request | [ ] |
-| Session storage | Inspect `writable/session` behavior | Session files created and cleaned up correctly | [ ] |
-
-### 12.11 Recommended Module Regression Matrix for This Project
-
-| Module | Key Routes/Functions | Mandatory Regression Scope |
+| Module Area | Controllers / Modules | Core Tests |
 | --- | --- | --- |
-| Authentication | `login.html`, `chk.html`, `logout.html` | Login, logout, invalid login, session timeout |
-| Dashboard/Home | `home.html`, menu/report entry points | Navigation, widgets, role-based menu visibility |
-| Agent Management | `save_agent`, `user_list`, `edit_agent`, `delete_agent`, `deactive_agent` | Full CRUD and role restrictions |
-| Task Management | `task-selection.html`, `task-create.html`, edit/restore routes | Create, edit, hide, restore, validation |
-| Reporting | `report.html`, `get-repo`, Excel export actions | Data accuracy and export download |
-| Duplicate/Live QC/Shadow | `find-duplicate-entries.html`, related endpoints | Filters, grouping, export, performance |
-| DAHT | `auto-daht.html`, `get-daht_calc`, `gen-excel-daht`, `post-daht` | Calculation accuracy, admin restriction, export, posting |
-| Uploads | `upload-new-daht.html`, related save/check actions | Valid/invalid upload, file security, persistence |
+| Login module | `Home` | Valid login, invalid login, logout, deactivated user, session persistence |
+| Dashboard / landing | `Home::home_1` and shared layout | Page load, access control, navigation |
+| CRUD operations | `Home`, `Agent` | Create bot, task, trigger, record edit, hide/delete/deactivate, password reset |
+| Reports | `Home` | Filter accuracy, datatable output, Excel export |
+| File download | `Home` export endpoints | Excel file download, filename, content integrity |
+| Email functionality | Not observed as a dedicated module | Mark as not applicable unless external functionality exists |
+| Session timeout | Shared session behavior | Forced re-login after timeout, protected route denial |
+
+### 12.2 Login Module Checklist
+
+| Test Case | Expected Result |
+| --- | --- |
+| Valid login | User reaches `home.html` |
+| Invalid password | Error shown, no session created |
+| Deactivated user | Access denied with correct message |
+| Logout | Session cleared and redirected safely |
+| Session persistence | User remains authenticated across pages |
+| Session timeout | User must authenticate again after expiry |
+
+### 12.3 Dashboard Checklist
+
+| Test Case | Expected Result |
+| --- | --- |
+| Home page load after login | Page renders without PHP errors |
+| Header/footer render | Shared layout loads correctly |
+| Menu navigation | All links resolve correctly |
+| Access control | Unauthenticated users are redirected to login |
+
+### 12.4 CRUD Operations Checklist
+
+| Test Case | Modules | Expected Result |
+| --- | --- | --- |
+| Create bot | `Home` | Record saved and success shown |
+| Create triggered-by | `Home` | Record saved and success shown |
+| Create task | `Home` | Record saved and success shown |
+| Create user | `Agent` | Record saved and admin feedback shown |
+| Edit user/record | `Agent`, `Home` | Changes persist accurately |
+| Hide/delete/deactivate | `Home`, `Agent` | Authorized action succeeds and messages are correct |
+
+### 12.5 Reports Checklist
+
+| Test Case | Expected Result |
+| --- | --- |
+| Report page load | No PHP errors |
+| Filter by bot/client/category/date | Result set matches DB query |
+| Datatable search/order | Filtering and ordering behave correctly |
+| Empty result set | Graceful no-data output |
+| Excel export | File downloads and matches report content |
+
+### 12.6 File Upload/Download Checklist
+
+Current repo observation:
+
+- No dedicated upload module was observed.
+- Report export download is present and must be tested.
+
+| Test Case | Expected Result |
+| --- | --- |
+| Export existing report | Excel file downloads successfully |
+| Export with empty results | Graceful output or empty export without crash |
+| Browser download headers | Filename and content type behave correctly |
+
+### 12.7 Email Functionality Checklist
+
+| Test Case | Expected Result |
+| --- | --- |
+| Email feature existence review | Confirm whether any external or hidden email flow exists |
+| If email is added later | SMTP settings must be environment-driven and tested in non-production |
+
+### 12.8 Session Timeout Testing
+
+| Test Case | Expected Result |
+| --- | --- |
+| Idle session expiry | User is redirected to login |
+| Post-timeout form access | Protected actions are blocked |
+| Flashdata after redirect | Messages render correctly |
+| Admin route protection | Non-admin users remain blocked |
+
+### 12.9 Suggested Test Evidence Template
+
+| Test ID | Module | Scenario | Input | Expected Result | Actual Result | Status | Evidence |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| BOT-MIG-001 | Login | Valid login | Valid user | Redirect to `home.html` |  |  |  |
+| BOT-MIG-002 | Report | Excel export | Date range | `.xls` download |  |  |  |
+| BOT-MIG-003 | Agent | Create user | Valid data | User created |  |  |  |
 
 ---
 
 ## 13. Common Migration Errors and Fixes
 
-| Error/Issue | Likely Cause | Recommended Fix |
-| --- | --- | --- |
-| Undefined property errors | CI3-style dynamic properties or missing service/model initialization | Explicitly declare properties and initialize dependencies in constructor or `initController()` |
-| Namespace issues | Missing or incorrect `namespace` and `use` statements | Add correct namespace declarations and import classes explicitly |
-| Base URL problems | Incorrect `baseURL`, missing trailing slash, wrong document root | Fix `.env` or `App.php`, verify `public/` mapping |
-| 404 routing issues | Routes not migrated or web server rewrite misconfigured | Review `Routes.php`, Apache/Nginx rewrite rules, and route methods |
-| Session issues | Wrong session save path, unwritable session folder, cookie mismatch | Verify `Session.php`, folder permissions, cookie settings, and environment values |
-| Query Builder syntax differences | Using CI3 result/builder methods in CI4 | Replace with CI4 query methods like `getRowArray()` and `getResultArray()` |
-| Writable folder permission issues | `writable/` not owned/writable by runtime user | Correct ownership/permissions for `logs`, `cache`, `session`, `uploads` |
-| Redirect behavior inconsistency | Mixing helper `redirect()->to()->send()` with raw output flow | Standardize controller returns and review helper-based exits |
-| CSRF validation failures | Missing tokens in forms or AJAX requests | Include CSRF tokens and configure AJAX headers appropriately |
-| Download/export failures | Third-party library autoloading or output buffering problems | Validate dependency loading and response headers before output |
-
-### 13.1 Quick Diagnostic Checklist
-
-| Question | Yes/No |
-| --- | --- |
-| Is the web server pointing to `public/`? |  |
-| Is `writable/session` writable? |  |
-| Is `baseURL` correct for the environment? |  |
-| Are namespaces present on all controllers/models/libraries? |  |
-| Are routes defined for all legacy URLs users still access? |  |
-| Are required PHP extensions enabled on the server? |  |
+| Error | Likely Cause | Fix | Validation |
+| --- | --- | --- | --- |
+| Undefined property | Missing property declaration or initialization | Declare typed properties and initialize in controller/model setup | Reload affected page |
+| Namespace issue | Missing namespace or bad PSR-4 mapping | Correct namespace and autoload configuration | Load class/module |
+| Base URL issue | Bad `.env` or incorrect web root | Fix `app.baseURL` and `public/` mapping | Asset and route test |
+| 404 routing issue | Missing route or rewrite problem | Add/update route and validate rewrite rules | Route smoke test |
+| Session issue | Misconfigured session path or permissions | Fix `writable/` permissions and session config | Login/logout test |
+| Query Builder difference | Legacy SQL assumption or wrapper logic | Review SQL and affected-row handling | Compare DB results |
+| Writable folder permission issue | PHP cannot write cache/log/session files | Correct permissions | `spark`, login, and cache validation |
+| Missing `otherdb` group | Legacy code references unconfigured DB group | Add config or remove unused path | Targeted smoke test |
 
 ---
 
 ## 14. Post-Migration Validation
 
-### 14.1 Validation Checklist
+### 14.1 Error Log Monitoring
 
-| Validation Area | Action | Owner | Status |
-| --- | --- | --- | --- |
-| Error log monitoring | Review `writable/logs` after deployment and during first business cycle | DevOps/Development | [ ] |
-| User acceptance testing | Business users validate critical workflows | Business/QA | [ ] |
-| Database verification | Compare key record counts and sample transactions | DBA/QA | [ ] |
-| Performance benchmarking | Compare major reports and page loads with baseline | Development/QA | [ ] |
-| Security testing | Validate auth, session, CSRF, upload, and access restrictions | QA/Security | [ ] |
+Monitor:
 
-### 14.2 Database Verification Points
+- PHP warnings and deprecations
+- Route not found errors
+- Session write failures
+- Cache write failures
+- Spreadsheet export failures
+- Database query errors
 
-| Area | Validation Method | Status |
-| --- | --- | --- |
-| User/agent data | Compare record counts and sample edit history | [ ] |
-| Task/category data | Validate lookup tables and joins | [ ] |
-| DAHT tables | Compare posted/generated data for sample ranges | [ ] |
-| Report totals | Compare old vs new totals for known date ranges | [ ] |
+### 14.2 User Acceptance Testing
 
-### 14.3 Performance Benchmarking Points
+UAT must include:
 
-| Feature | Metric | Baseline | Actual | Status |
-| --- | --- | --- | --- | --- |
-| Login | Page load/auth response time |  |  | [ ] |
-| Dashboard | Initial render |  |  | [ ] |
-| Duplicate report | Query + render time |  |  | [ ] |
-| Live QC report | Query + render time |  |  | [ ] |
-| DAHT export | Export generation time |  |  | [ ] |
+1. Authentication
+2. At least one create/edit/delete flow
+3. Core report filters
+4. Excel export
+5. Admin-only user management
+
+### 14.3 Database Verification
+
+Checklist:
+
+- Confirm created/updated/deactivated rows match UI behavior
+- Compare report totals and counts with direct DB queries
+- Validate no unexpected data loss occurred during migration
+
+### 14.4 Performance Benchmarking
+
+Benchmark:
+
+- Login response time
+- Home/dashboard response time
+- Report generation time
+- Excel export generation time
+
+### 14.5 Security Testing
+
+Include:
+
+- Auth bypass attempts
+- CSRF testing after final configuration
+- Session timeout and logout verification
+- Direct URL access attempts to admin-only pages
 
 ---
 
@@ -898,34 +795,31 @@ Prefer centralized validation rules instead of scattered manual `if` conditions.
 
 ### 15.1 Backup Restore Steps
 
-| Step | Action | Owner | Status |
-| --- | --- | --- | --- |
-| 1 | Announce rollback decision and stop new deployment actions | Release Manager | [ ] |
-| 2 | Place application in maintenance mode | DevOps | [ ] |
-| 3 | Restore previous application package | DevOps | [ ] |
-| 4 | Restore previous `.env` and server configuration if changed | DevOps | [ ] |
-| 5 | Restore database backup if schema/data change requires it | DBA | [ ] |
-| 6 | Clear cache/session artifacts if necessary | DevOps | [ ] |
-| 7 | Perform smoke tests on restored version | QA/Development | [ ] |
-| 8 | Re-open traffic after approval | Release Manager | [ ] |
+1. Announce rollback and freeze changes.
+2. Preserve the failed deployment state for investigation.
+3. Restore the previous stable application package.
+4. Restore the previous `.env` and web-server configuration if changed.
+5. Restore the database backup if required by the failed release.
+6. Re-run smoke tests on the restored build.
 
 ### 15.2 Rollback Deployment Procedure
 
-| Checkpoint | Action | Status |
+| Step | Action | Evidence |
 | --- | --- | --- |
-| Previous release package stored | Confirm location and version identifier | [ ] |
-| Restore instructions documented | No ad hoc rollback commands during incident | [ ] |
-| Rollback database impact reviewed | Determine whether data written during failed release must be preserved or reverted | [ ] |
-| Rollback smoke test list ready | Login, dashboard, reports, upload, and admin flows | [ ] |
+| 1 | Stop or isolate the failed release | Incident record |
+| 2 | Restore last stable code package | Deployment log |
+| 3 | Restore previous config and environment values | Config audit |
+| 4 | Validate `public/` mapping and permissions | Smoke test |
+| 5 | Validate login, reports, and admin module | QA sign-off |
 
 ### 15.3 Emergency Recovery Checklist
 
-| Item | Action | Status |
-| --- | --- | --- |
-| Stakeholder communication | Notify support, business owner, and deployment team | [ ] |
-| Incident logging | Capture failure symptoms, timestamps, and affected modules | [ ] |
-| Production logs archived | Save error logs before cleanup | [ ] |
-| Root cause review scheduled | Create corrective action item after stabilization | [ ] |
+| Trigger | Action | Owner | ETA |
+| --- | --- | --- | --- |
+| Login failure | Restore previous application/config and re-test auth | DevOps + Developer | Immediate |
+| Report/export failure | Roll back code and validate runtime permissions | DevOps | Immediate |
+| Session/cache failure | Restore stable environment settings and permissions | DevOps | Immediate |
+| Widespread route issues | Revert deployment and verify rewrite config | DevOps | Immediate |
 
 ---
 
@@ -933,59 +827,56 @@ Prefer centralized validation rules instead of scattered manual `if` conditions.
 
 ### 16.1 Use Environment Files
 
-| Best Practice | Why It Matters |
-| --- | --- |
-| Keep environment-specific values in `.env` | Avoid hard-coded production values in source code |
-| Separate secrets from repository defaults | Improve security and release consistency |
-| Use environment-specific overrides | Reduce deployment errors between local, staging, and production |
+- Maintain separate `.env` values per environment
+- Keep secrets out of source control when possible
+- Use masked examples in documentation
 
 ### 16.2 Maintain Coding Standards
 
-| Best Practice | Why It Matters |
-| --- | --- |
-| Use namespaces consistently | Required for maintainable CI4 code |
-| Prefer CI4 services and models | Reduces hybrid-pattern technical debt |
-| Split large controllers over time | Improves readability and testability |
-| Avoid direct SQL string concatenation where possible | Improves security and maintainability |
+- Use namespaces consistently
+- Avoid dynamic properties under PHP 8.2
+- Standardize request, response, redirect, and session handling
+- Continue reducing controller bloat over time
 
 ### 16.3 Logging and Monitoring
 
-| Best Practice | Why It Matters |
-| --- | --- |
-| Monitor `writable/logs` after every deployment | Catch runtime issues early |
-| Add structured logging around critical workflows | Speeds support and incident response |
-| Retain logs through migration window | Helps compare pre- and post-release behavior |
+- Log failures with useful technical context
+- Never log secrets or sensitive values
+- Keep UAT logging more verbose than production
 
 ### 16.4 Version Control Recommendations
 
-| Best Practice | Why It Matters |
-| --- | --- |
-| Use dedicated migration branch | Keeps migration work isolated and reviewable |
-| Tag pre-migration and post-migration releases | Simplifies rollback and comparison |
-| Use pull request review checklist | Enforces namespace, route, security, and testing reviews |
-| Link commits to test evidence | Improves auditability for release approval |
-
-### 16.5 Recommended Implementation Standards for This Project
-
-| Area | Recommendation |
-| --- | --- |
-| Access control | Replace helper-driven redirects with CI4 filters where practical |
-| Data access | Move utility-style data access into dedicated model/service classes |
-| Third-party packages | Prefer Composer-managed dependencies over manual `ThirdParty` copies |
-| Reports | Add regression test datasets for duplicate, live QC, shadow, and DAHT outputs |
-| Deployment | Standardize on `public/` web root and locked-down `writable/` permissions |
+- Use a dedicated migration/hardening branch
+- Keep commits small and reviewable
+- Tag the pre-cutover release
+- Tag the production cutover release
+- Preserve a clear rollback target
 
 ---
 
-## Final Sign-Off Template
+## Appendix A: Botlogs Quick Reference
 
-| Team | Name | Date | Status | Remarks |
-| --- | --- | --- | --- | --- |
-| Development |  |  | [ ] Approved |  |
-| QA |  |  | [ ] Approved |  |
-| DevOps/Deployment |  |  | [ ] Approved |  |
-| Business/UAT |  |  | [ ] Approved |  |
+| Area | Current Botlogs Observation | Migration Focus |
+| --- | --- | --- |
+| Framework layout | CI4 structure already in place | Validate and harden legacy behaviors |
+| Routes | 53 explicit routes | Maintain parity and verify all links |
+| Controllers | `Home.php`, `Agent.php`, plus legacy `Home_v0.php` | Focus on login, CRUD, and reports |
+| Models | Shared wrapper models | Validate SQL safety and behavior |
+| Views | Small view set | Check forms, flash messages, and CSRF readiness |
+| Database | `default` group configured | Validate and resolve stray `otherdb` reference |
+| Exports | Excel export via PhpSpreadsheet | Test download behavior and output integrity |
+| Runtime writes | `writable/` required | Fix cache/session/log permissions |
 
-## Conclusion
+## Appendix B: CI3 vs CI4 Quick Reference
 
-This checklist is designed to support a controlled, auditable, and low-risk migration from CodeIgniter 3 practices to CodeIgniter 4 standards for the MIS project. It should be used as a working document during planning, execution, testing, deployment, and post-release validation. Teams should update the status columns and evidence fields throughout the migration cycle so the document becomes the formal record of readiness and sign-off.
+| Area | CI3 | CI4 |
+| --- | --- | --- |
+| Controller base | `CI_Controller` | `BaseController` |
+| Model base | `CI_Model` | `CodeIgniter\Model` or service-style class |
+| POST input | `$this->input->post()` | `$this->request->getPost()` |
+| GET input | `$this->input->get()` | `$this->request->getGet()` |
+| View loading | `$this->load->view()` | `view()` |
+| Helper loading | `$this->load->helper()` | `helper()` or autoload |
+| Config | `application/config/*` | `.env` and `app/Config/*` |
+| Web root | Often project root | `public/` |
+| Runtime files | Mixed | `writable/` |
